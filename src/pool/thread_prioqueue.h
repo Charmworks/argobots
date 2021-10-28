@@ -20,24 +20,24 @@
 
 
 /* Structure to store a variable bit length priority */
-typedef struct prio_struct {
+typedef struct {
     unsigned short bits;
     unsigned short ints;
     unsigned int data[1];
-} *_prio;
+} _prio;
 
-typedef struct prioqelt_struct {
+typedef struct prioqelt {
     thread_queue_t data;
-    struct prioqelt_struct *ht_next;
-    struct prioqelt_struct **ht_handle;
-    struct prio_struct pri;
-}*_prioqelt;
+    struct prioqelt *ht_next;
+    struct prioqelt **ht_handle;
+    _prio pri;
+}_prioqelt;
 
 typedef struct {
     int heapsize;
     int heapnext;
-    _prioqelt *heap;
-    _prioqelt *hashtab;
+    _prioqelt **heap;
+    _prioqelt **hashtab;
     int hash_key_size;
     int hash_entry_size;
 } _prioq;

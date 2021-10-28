@@ -13,8 +13,8 @@ static void CqsPrioqInit(_prioq *pq)
     pq->heapnext = 1;
     pq->hash_key_size = PRIOQ_TABSIZE;
     pq->hash_entry_size = 0;
-    pq->heap = (_prioqelt *)malloc(100 * sizeof(_prioqelt));
-    pq->hashtab = (_prioqelt *)malloc(pq->hash_key_size * sizeof(_prioqelt));
+    pq->heap = (_prioqelt **)malloc(100 * sizeof(_prioqelt *));
+    pq->hashtab = (_prioqelt **)malloc(pq->hash_key_size * sizeof(_prioqelt *));
     for (i=0; i<pq->hash_key_size; i++) pq->hashtab[i]=0;
 }
 
@@ -26,9 +26,9 @@ static void CqsPrioqExpand(_prioq *pq)
 {
     int oldsize = pq->heapsize;
     int newsize = oldsize * 2;
-    _prioqelt *oheap = pq->heap;
-    _prioqelt *nheap = (_prioqelt *)malloc(newsize*sizeof(_prioqelt));
-    memcpy(nheap, oheap, oldsize * sizeof(_prioqelt));
+    _prioqelt **oheap = pq->heap;
+    _prioqelt **nheap = (_prioqelt **)malloc(newsize*sizeof(_prioqelt*));
+    memcpy(nheap, oheap, oldsize * sizeof(_prioqelt *));
     pq->heap = nheap;
     pq->heapsize = newsize;
     free(oheap);
@@ -39,11 +39,11 @@ void CqsPrioqRehash(_prioq *pq)
     int oldHsize = pq->hash_key_size;
     int newHsize = oldHsize * 2;
     unsigned int hashval;
-    _prioqelt pe, pe1, pe2;
+    _prioqelt *pe, *pe1, *pe2;
     int i,j;
 
-    _prioqelt *ohashtab = pq->hashtab;
-    _prioqelt *nhashtab = (_prioqelt *)malloc(newHsize*sizeof(_prioqelt));
+    _prioqelt **ohashtab = pq->hashtab;
+    _prioqelt **nhashtab = (_prioqelt **)malloc(newHsize*sizeof(_prioqelt *));
 
     pq->hash_key_size = newHsize;
 
@@ -92,7 +92,7 @@ int CqsPrioGT_(unsigned int ints1, unsigned int *data1, unsigned int ints2, unsi
  * @return ? if prio1 == prio2
  * @return 0 if prio1 < prio2
  */
-int CqsPrioGT(_prio prio1, _prio prio2)
+int CqsPrioGT(_prio *prio1, _prio *prio2)
 {
     unsigned int ints1 = prio1->ints;
     unsigned int ints2 = prio2->ints;
@@ -118,8 +118,8 @@ thread_queue_t* CqsPrioqGetDeq(_prioq *pq, unsigned int priobits, unsigned int *
     unsigned int prioints = (priobits+CINTBITS-1)/CINTBITS;
     unsigned int hashval, i;
     int heappos; 
-    _prioqelt *heap, pe, next, parent;
-    _prio pri;
+    _prioqelt **heap, *pe, *next, *parent;
+    _prio *pri;
     int mem_cmp_res;
     unsigned int pri_bits_cmp;
     static int cnt_nilesh=0;
@@ -134,7 +134,7 @@ thread_queue_t* CqsPrioqGetDeq(_prioq *pq, unsigned int priobits, unsigned int *
                 return &(pe->data);
 
     /* If not present, allocate a bucket for specified priority */
-    pe = (_prioqelt)malloc(sizeof(struct prioqelt_struct)+((prioints-1)*sizeof(int)));
+    pe = (_prioqelt *)malloc(sizeof(_prioqelt)+((prioints-1)*sizeof(int)));
     pe->pri.bits = priobits;
     pe->pri.ints = prioints;
     memcpy(pe->pri.data, priodata, (prioints*sizeof(int)));
@@ -157,7 +157,7 @@ thread_queue_t* CqsPrioqGetDeq(_prioq *pq, unsigned int priobits, unsigned int *
     heap = pq->heap;
     while (heappos > 1) {
         int parentpos = (heappos >> 1);
-        _prioqelt parent = heap[parentpos];
+        _prioqelt *parent = heap[parentpos];
         if (CqsPrioGT(pri, &(parent->pri))) break;
         heap[heappos] = parent; heappos=parentpos;
     }
@@ -169,14 +169,14 @@ thread_queue_t* CqsPrioqGetDeq(_prioq *pq, unsigned int priobits, unsigned int *
 /** Dequeue an entry */
 void *CqsPrioqDequeue(_prioq *pq)
 {
-    _prio pri;
-    _prioqelt pe, old;
+    _prio *pri;
+    _prioqelt *pe, *old;
     //void *data;
     int heappos, heapnext;
-    _prioqelt *heap = pq->heap;
+    _prioqelt **heap = pq->heap;
     int left_child;
-    _prioqelt temp1_ht_right, temp1_ht_left, temp1_ht_parent;
-    _prioqelt *temp1_ht_handle;
+    _prioqelt *temp1_ht_right, *temp1_ht_left, *temp1_ht_parent;
+    _prioqelt **temp1_ht_handle;
     static int cnt_nilesh1=0;
 
     if (pq->heapnext==1) return 0;
@@ -186,8 +186,8 @@ void *CqsPrioqDequeue(_prioq *pq)
     //if (pe->data.head == pe->data.tail) {
     if (pe->data.p_head == pe->data.p_tail) {
         /* Unlink prio-bucket from hash-table */
-        _prioqelt next = pe->ht_next;
-        _prioqelt *handle = pe->ht_handle;
+        _prioqelt *next = pe->ht_next;
+        _prioqelt **handle = pe->ht_handle;
         if (next) next->ht_handle = handle;
         *handle = next;
         old=pe;
@@ -200,7 +200,7 @@ void *CqsPrioqDequeue(_prioq *pq)
         heappos = 1;
         while (1) {
             int childpos1, childpos2, childpos;
-            _prioqelt ch1, ch2, child;
+            _prioqelt *ch1, *ch2, *child;
             childpos1 = heappos<<1;
             if (childpos1>=heapnext) break;
             childpos2 = childpos1+1;
@@ -448,10 +448,15 @@ if (q->posprioq.heapnext>1)
 *resp = 0; return;
 }
 
-static struct prio_struct kprio_zero = { 0, 0, {0} };
-static struct prio_struct kprio_max  = { 32, 1, {((unsigned int)(-1))} };
+static _prio kprio_zero = { 0, 0, {0} };
+static _prio kprio_max  = { 32, 1, {((unsigned int)(-1))} };
 
-_prio CqsGetPriority(Queue *q)
+//_prioq kprio_zero = { 0, 0, {0} };
+//_prioq kprio_max  = { 32, 1, {((unsigned int)(-1))} };
+
+
+
+_prio* CqsGetPriority(Queue *q)
 {
     if (q->negprioq.heapnext>1) return &(q->negprioq.heap[1]->pri);
     //if (q->zeroprio.head != q->zeroprio.tail) { return &kprio_zero; }
@@ -619,7 +624,7 @@ int CqsRemoveSpecificPrioq(_prioq *q, const ABTI_thread *specific){
     ABTI_thread *head, *tail;
     void **result;
     int i;
-    _prioqelt pe;
+    _prioqelt *pe;
 
     for(i = 1; i < q->heapnext; i++){
         pe = (q->heap)[i];

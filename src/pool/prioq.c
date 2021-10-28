@@ -119,7 +119,7 @@ static int pool_init(ABT_pool pool, ABT_pool_config config)
         /* Initialize the mutex */
         ABTD_spinlock_clear(&p_data->mutex);
     }
-    thread_queue_init(&p_data->queue);
+    prioq_queue_init(&p_data->queue);
 
     p_pool->data = p_data;
     return abt_errno;
@@ -137,7 +137,7 @@ static ABT_bool pool_is_empty(ABT_pool pool)
 {
     ABTI_pool *p_pool = ABTI_pool_get_ptr(pool);
     data_t *p_data = pool_get_data_ptr(p_pool->data);
-    return thread_queue_is_empty(&p_data->queue);
+    return CqsEmpty(&p_data->queue) ? ABT_TRUE : ABT_FALSE;
 }
 
 static size_t pool_get_size(ABT_pool pool)
